@@ -8,6 +8,7 @@ from enum import Enum
 #import main
 import apiai, json
 import requests
+import random
 key='735824473:AAFkT_eAnCl1eu8L3BaYIxbm7sKYlyDLxr0'
 
 
@@ -18,12 +19,18 @@ class States(Enum):
     PASS=4
     LOGGED=5
     QR=6
-    
+    TAB = 7
 
 def stat(i,d):
+    r = requests.get('http://89.223.91.216:7000/get2')
+    w = eval(str(r.text))
+    tgf_obj.bot.send_message(i.message.chat.id,'Вам необходимо выпить')
+    for u in w['list']:
+        tgf_obj.bot.send_message(i.message.chat.id,list(u.keys())[0] + ' '+str(u[list(u.keys())[0]])+' штук')
     return States.LOGGED
 
 def qwer(i,d):
+    tgf_obj.bot.send_message(i.chat.id,'Вам необходимо выпить '+str(random.randrange(2,5))+'таблетки')
     raw = i.photo[2].file_id
     name = "pil.png"
     file_info = tgf_obj.bot.get_file(raw)
@@ -43,8 +50,11 @@ def qwer(i,d):
     dilation2 = cv2.dilate(gray_tre2,kernel,iterations = 2)
     im2, contours, hierarchy = cv2.findContours(dilation2, cv2.RETR_TREE ,cv2.CHAIN_APPROX_SIMPLE)
     cv2.drawContours(resized, contours, -1, (0,255,0), 3)
+    cv2.imwrite('tab.png',resized)
+    photo = open('tab.png', 'rb')
+    tgf_obj.bot.send_photo(i.chat.id,photo)
     amount = len(contours)
-    print(amount)
+    tgf_obj.bot.send_message(i.chat.id,'Вы приняли '+str(10-amount))
     return States.LOGGED
 
 def qr(i,d):
@@ -55,7 +65,6 @@ def qr(i,d):
     with open(name,'wb') as new_file:
         new_file.write(downloaded_file)
     tgf_obj.bot.send_message(i.chat.id,'Новые лекарства записаны в вашу базу данных')
-    print(r.text)
     return States.LOGGED
 
 def send_image(i,d):
@@ -92,9 +101,9 @@ UI = {
     },
     States.LOGGED:{
         't':'Личный кабинет',
-        'b':[ {'Отсканировать QR':tgf.action(States.START)},
-         {'Список лекарств':tgf.action(stat)},
-        {'Отправить фото':tgf.action(States.START)},
+        'b':[ {'Отсканировать QR':tgf.action(States.QR)},
+         {'Список лекарств':tgf.action(stat,update_msg=False)},
+        {'Отправить фото':tgf.action(States.TAB)},
         {'Выйти':tgf.action(States.START)},
         ]
     },
@@ -102,6 +111,11 @@ UI = {
         't':'Отправьте фотографию QR кода',
         'b':[ {'Назад':tgf.action(States.LOGGED)}],
         'react':h.action(qr, react_to='photo'),
+    },
+    States.TAB:{
+        't':'Отправьте фотографию упаковки таблеток',
+        'b':[ {'Назад':tgf.action(States.LOGGED)}],
+        'react':h.action(qwer, react_to='photo'),
     },
     States.LOGIN:{
         't':'Введите логин',
